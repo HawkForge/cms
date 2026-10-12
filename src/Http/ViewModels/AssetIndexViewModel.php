@@ -97,7 +97,7 @@ class AssetIndexViewModel extends ContentIndexViewModel
         $folder = $this->rootFolder();
 
         if ($folder === null) {
-            return $actions ?: null;
+            return $actions ? array_values($actions) : null;
         }
 
         if (Gate::check('renameFolder', $folder)) {
@@ -128,7 +128,7 @@ class AssetIndexViewModel extends ContentIndexViewModel
             );
         }
 
-        return $actions ?: null;
+        return $actions ? array_values($actions) : null;
     }
 
     /**
@@ -388,7 +388,7 @@ class AssetIndexViewModel extends ContentIndexViewModel
     {
         $uri = array_last($folder->sourcePath ?? [])['uri'] ?? null;
 
-        return $uri !== null ? Url::cpUrl($uri) : null;
+        return is_string($uri) ? Url::cpUrl($uri) : null;
     }
 
     /**

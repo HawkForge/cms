@@ -232,8 +232,8 @@ class Choice extends Control
      *
      * `ChoiceControl.vue`'s `selectOptions` mirrors this for the Vue renderer.
      *
-     * @param  list<array<string, mixed>>  $options
-     * @return list<array<string, mixed>>
+     * @param  list<array{label: string, value: string|int|float|bool, disabled?: bool, group?: string|null}>  $options
+     * @return list<array{label: string, value: string|int|float|bool, disabled?: bool, group?: string|null}>
      */
     private static function selectOptions(array $options, bool $required, string|false|null $placeholder): array
     {
@@ -309,7 +309,7 @@ class Choice extends Control
         // token posts. Not disabled — Lion skips disabled children when “All”
         // propagates, which would leave it unable to clear them again.
         $allChecked = $singleValue && in_array($allValue, $values, true);
-        $checkboxes = array_map(function (array $option, int $index) use ($attributes, $name, $values, $allChecked): Checkbox {
+        $checkboxes = array_map(function (array $option, int|string $index) use ($attributes, $name, $values, $allChecked): Checkbox {
             $optionValue = (string) $option['value'];
 
             return Checkbox::make()
@@ -323,7 +323,7 @@ class Choice extends Control
                 ->inputAttributes([
                     'aria' => ['invalid' => $attributes['aria']['invalid'] ?? null],
                 ]);
-        }, $control->props['options'], array_keys($control->props['options']));
+        }, array_values($control->props['options']), array_keys(array_values($control->props['options'])));
 
         return CheckboxGroup::make()
             ->id($attributes['id'])
@@ -357,7 +357,7 @@ class Choice extends Control
             usort($options, fn (array $a, array $b): int => self::valueOrder($a, $values) <=> self::valueOrder($b, $values));
         }
 
-        $checkboxes = array_map(function (array $option, int $index) use ($attributes, $name, $values, $disabled): Checkbox {
+        $checkboxes = array_map(function (array $option, int|string $index) use ($attributes, $name, $values, $disabled): Checkbox {
             $optionValue = (string) $option['value'];
 
             return Checkbox::make()
@@ -426,7 +426,7 @@ class Choice extends Control
     private static function radiosHtml(ControlPayload $control, mixed $value, array $attributes): string
     {
         $values = self::values($value);
-        $radios = array_map(function (array $option, int $index) use ($attributes, $values): Radio {
+        $radios = array_map(function (array $option, int|string $index) use ($attributes, $values): Radio {
             $optionValue = (string) $option['value'];
 
             return Radio::make()
@@ -442,7 +442,7 @@ class Choice extends Control
                     'required' => $attributes['required'],
                     'aria' => ['invalid' => $attributes['aria']['invalid'] ?? null],
                 ]);
-        }, $control->props['options'], array_keys($control->props['options']));
+        }, array_values($control->props['options']), array_keys(array_values($control->props['options'])));
 
         return RadioGroup::make()
             ->id($attributes['id'])
@@ -501,13 +501,13 @@ class Choice extends Control
                 ->value($optionValue)
                 ->active(in_array($optionValue, $values, true))
                 ->disabled($attributes['name'] === null || ($option['disabled'] ?? false));
-        }, $control->props['options']);
+        }, array_values($control->props['options']));
     }
 
     /** @return list<string> */
     private static function values(mixed $value): array
     {
-        return array_map(strval(...), is_array($value) ? $value : [$value]);
+        return array_map(strval(...), is_array($value) ? array_values($value) : [$value]);
     }
 
     private static function multipleName(?string $name): ?string
@@ -515,7 +515,7 @@ class Choice extends Control
         return $name === null ? null : "{$name}[]";
     }
 
-    /** @param array{label: string, labelHtml?: string} $option */
+    /** @param array<string, mixed> $option */
     private static function optionLabel(array $option): string|HtmlString
     {
         return isset($option['labelHtml'])

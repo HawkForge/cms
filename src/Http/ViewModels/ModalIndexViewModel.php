@@ -269,7 +269,7 @@ class ModalIndexViewModel extends ContentIndexViewModel
     {
         $uri = array_last($folder->sourcePath ?? [])['uri'] ?? null;
 
-        return $uri !== null ? Url::cpUrl($uri) : null;
+        return is_string($uri) ? Url::cpUrl($uri) : null;
     }
 
     /**
@@ -287,7 +287,7 @@ class ModalIndexViewModel extends ContentIndexViewModel
             withDisabled: true,
             page: $this->page,
             restrictTo: $this->restrictToSources,
-        )->all();
+        )->values()->all();
     }
 
     /** @return list<array<string, mixed>> */

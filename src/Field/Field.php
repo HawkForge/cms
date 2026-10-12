@@ -61,6 +61,8 @@ use CraftCms\Cms\Validation\Rules\HandleRule;
 use DateTimeInterface;
 use GraphQL\Type\Definition\FieldDefinition;
 use GraphQL\Type\Definition\InputObjectField;
+use GraphQL\Type\Definition\InputType;
+use GraphQL\Type\Definition\OutputType;
 use GraphQL\Type\Definition\Type;
 use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Database\Query\Builder;
@@ -262,7 +264,7 @@ abstract class Field extends Component implements Actionable, FieldInterface, Ic
     protected TranslationMethod $_translationMethod = TranslationMethod::None;
 
     /**
-     * @var array<string,string|false>
+     * @var array<string,Expression|string|false>
      *
      * @see getValueSql()
      */
@@ -271,8 +273,12 @@ abstract class Field extends Component implements Actionable, FieldInterface, Ic
     /**
      * Create a new field instance
      */
-    public function __construct($config = [])
+    public function __construct(array|object $config = [])
     {
+        if (is_object($config)) {
+            $config = get_object_vars($config);
+        }
+
         parent::__construct(Arr::except($config, ['fieldLimit', 'limitUnit']));
 
         // Validate the translation method
@@ -288,6 +294,14 @@ abstract class Field extends Component implements Actionable, FieldInterface, Ic
 
     public static function get(int|string $id): ?static
     {
+        if (is_string($id)) {
+            if (! ctype_digit($id)) {
+                return null;
+            }
+
+            $id = (int) $id;
+        }
+
         /** @var ?static $field */
         $field = Fields::getFieldById($id);
 
@@ -446,7 +460,7 @@ abstract class Field extends Component implements Actionable, FieldInterface, Ic
 
     public function getId(): ?int
     {
-        return $this->id;
+        return is_int($this->id) ? $this->id : null;
     }
 
     public function getUiLabel(): string
@@ -531,6 +545,7 @@ abstract class Field extends Component implements Actionable, FieldInterface, Ic
         return $items;
     }
 
+    /** @return 'ltr'|'rtl' */
     public function getOrientation(?ElementInterface $element): string
     {
         $locale = match (true) {
@@ -982,13 +997,13 @@ abstract class Field extends Component implements Actionable, FieldInterface, Ic
         return true;
     }
 
-    /** @return Type|FieldDefinitionConfig */
+    /** @return (Type&OutputType)|FieldDefinitionConfig */
     public function getContentGqlType(): Type|array
     {
         return Type::string();
     }
 
-    /** @return Type|InputObjectFieldConfig */
+    /** @return (Type&InputType)|InputObjectFieldConfig */
     public function getContentGqlMutationArgumentType(): Type|array
     {
         return [
@@ -998,7 +1013,7 @@ abstract class Field extends Component implements Actionable, FieldInterface, Ic
         ];
     }
 
-    /** @return Type|InputObjectFieldConfig */
+    /** @return (Type&InputType)|InputObjectFieldConfig */
     public function getContentGqlQueryArgumentType(): Type|array
     {
         return [

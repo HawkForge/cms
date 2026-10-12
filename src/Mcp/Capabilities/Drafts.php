@@ -111,7 +111,7 @@ readonly class Drafts
             'limit' => $page['limit'],
             'offset' => $page['offset'],
             'nextOffset' => $page['nextOffset'],
-            'drafts' => $drafts->all(),
+            'drafts' => array_values($drafts->all()),
         ];
     }
 

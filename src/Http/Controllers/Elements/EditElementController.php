@@ -105,7 +105,9 @@ class EditElementController
 
         // Prevalidate?
         if ($this->request->boolean('prevalidate') && $element->enabled && $element->getEnabledForSite()) {
-            $element->ruleset->useScenario(ElementRules::SCENARIO_LIVE);
+            if ($element->ruleset !== false) {
+                $element->ruleset->useScenario(ElementRules::SCENARIO_LIVE);
+            }
             $element->validate();
         }
 
@@ -655,7 +657,7 @@ class EditElementController
 
         $hideViewAction = ! empty($previewTargets) && ! $this->isSlideout();
 
-        return array_filter(
+        return array_values(array_filter(
             $element->getActionMenuItems(),
             function (array $item) use ($hideViewAction) {
                 // filter out "Edit" item - no point showing edit action on the edit page,
@@ -672,7 +674,7 @@ class EditElementController
 
                 return true;
             },
-        );
+        ));
     }
 
     private function prepareEditor(

@@ -24,7 +24,7 @@ trait HasLinkFieldSettings
 
     private bool $showLabelField = false;
 
-    /** @var list<'urlSuffix'|'title'> */
+    /** @var list<'ariaLabel'|'class'|'download'|'id'|'rel'|'target'|'title'|'urlSuffix'> */
     private array $advancedFields = [];
 
     /** @param list<LinkType> $types */
@@ -42,7 +42,7 @@ trait HasLinkFieldSettings
         return $this;
     }
 
-    /** @param list<'urlSuffix'|'title'> $advancedFields */
+    /** @param list<'ariaLabel'|'class'|'download'|'id'|'rel'|'target'|'title'|'urlSuffix'> $advancedFields */
     public function advancedFields(array $advancedFields): static
     {
         $this->advancedFields = $advancedFields;
@@ -50,7 +50,7 @@ trait HasLinkFieldSettings
         return $this;
     }
 
-    /** @return array{types: list<LinkType>, showLabelField: bool, advancedFields: list<'urlSuffix'|'title'>} */
+    /** @return array{types: list<LinkType>, showLabelField: bool, advancedFields: list<'ariaLabel'|'class'|'download'|'id'|'rel'|'target'|'title'|'urlSuffix'>} */
     protected function linkFieldSettingsProps(): array
     {
         return [

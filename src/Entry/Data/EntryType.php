@@ -125,7 +125,7 @@ class EntryType extends Component implements Actionable, Chippable, Colorable, C
 
     public static function get(int|string $id): ?self
     {
-        return EntryTypes::getEntryTypeById($id);
+        return is_int($id) || ctype_digit($id) ? EntryTypes::getEntryTypeById((int) $id) : null;
     }
 
     public function getElementType(): string

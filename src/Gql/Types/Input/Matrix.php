@@ -56,7 +56,6 @@ class Matrix extends InputObjectType
 
                                         // Get the field input types
                                         foreach ($entryType->getCustomFields() as $field) {
-                                            /** @var Field $field */
                                             $entryTypeFields[$field->handle] = $field->getContentGqlMutationArgumentType();
                                         }
 
@@ -82,7 +81,7 @@ class Matrix extends InputObjectType
                 ];
             },
             'normalizeValue' => [self::class, 'normalizeValue'],
-        ]));
+        ]), InputObjectType::class);
     }
 
     public static function normalizeValue(mixed $value): mixed

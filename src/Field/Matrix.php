@@ -86,7 +86,7 @@ use Override;
 use RuntimeException;
 use Tpetry\QueryExpressions\Language\Alias;
 
-use function CraftCms\Cms\craftAuth;
+use function CraftCms\Cms\currentUser;
 use function CraftCms\Cms\currentUserElement;
 use function CraftCms\Cms\t;
 
@@ -268,7 +268,7 @@ class Matrix extends Field implements EagerLoadingFieldInterface, ElementContain
     public array $siteSettings = [];
 
     /**
-     * @var EntryType[] The field’s available entry types
+     * @var list<EntryType> The field’s available entry types
      *
      * @see getEntryTypes()
      * @see setEntryTypes()
@@ -280,8 +280,12 @@ class Matrix extends Field implements EagerLoadingFieldInterface, ElementContain
      */
     private NestedElementManager $_entryManager;
 
-    public function __construct($config = [])
+    public function __construct(array|object $config = [])
     {
+        if (is_object($config)) {
+            $config = get_object_vars($config);
+        }
+
         // Config normalization
         unset($config['contentTable']);
 
@@ -547,7 +551,7 @@ class Matrix extends Field implements EagerLoadingFieldInterface, ElementContain
     /**
      * Returns the available entry types.
      *
-     * @return EntryType[]
+     * @return list<EntryType>
      */
     public function getEntryTypes(): array
     {
@@ -663,7 +667,7 @@ class Matrix extends Field implements EagerLoadingFieldInterface, ElementContain
      * like its neighbours right away rather than waiting for the next save.
      *
      * @param  list<EntryType>|null  $creationTypes
-     * @return array<string, mixed>
+     * @return array{label:string, icon:array<string,string>|null, color:string|null, actions:list<array<string,mixed>>, data:array<string,int|string>, error:bool}
      */
     public function blockPresentation(Entry $entry, string $uid, ?array $creationTypes = null): array
     {
@@ -897,8 +901,8 @@ class Matrix extends Field implements EagerLoadingFieldInterface, ElementContain
     /**
      * Returns the available entry types for the given owner element.
      *
-     * @param  Entry[]  $value
-     * @return EntryType[]
+     * @param  list<Entry>  $value
+     * @return list<EntryType>
      */
     public function getEntryTypesForField(array $value, ?ElementInterface $element): array
     {
@@ -1404,7 +1408,10 @@ class Matrix extends Field implements EagerLoadingFieldInterface, ElementContain
         return $this->entryManager()->uiControl(
             $context->path,
             $owner,
-            $this->viewMode,
+            match ($this->viewMode) {
+                self::VIEW_MODE_CARDS, self::VIEW_MODE_CARDS_GRID, self::VIEW_MODE_INDEX => $this->viewMode,
+                default => throw new InvalidArgumentException('Nested entry controls require cards or index view mode.'),
+            },
             $this->nestedElementManagerConfig($context->value, $owner, ! $editable),
         );
     }
@@ -1430,7 +1437,7 @@ class Matrix extends Field implements EagerLoadingFieldInterface, ElementContain
             }
 
             /** @var Entry[]|null $value */
-            $entryTypes = $this->getEntryTypesForField($value ?? [], $owner);
+            $entryTypes = $this->getEntryTypesForField(array_values($value ?? []), $owner);
         } else {
             $entryTypes = $this->_entryTypes;
         }
@@ -1518,7 +1525,7 @@ class Matrix extends Field implements EagerLoadingFieldInterface, ElementContain
     #[Override]
     public function getElementRules(ElementInterface $element): array
     {
-        if (! $element->ruleset->inScenarios(ElementRules::SCENARIO_ESSENTIALS, ElementRules::SCENARIO_DEFAULT, ElementRules::SCENARIO_LIVE)) {
+        if (! $element->ruleset || ! $element->ruleset->inScenarios(ElementRules::SCENARIO_ESSENTIALS, ElementRules::SCENARIO_DEFAULT, ElementRules::SCENARIO_LIVE)) {
             return [];
         }
 
@@ -1541,6 +1548,10 @@ class Matrix extends Field implements EagerLoadingFieldInterface, ElementContain
     /** @param EntryQuery<Entry>|ElementCollection<int,Entry> $value */
     private function validateEntries(ElementInterface $element, string $attribute, EntryQuery|ElementCollection $value, Closure $fail): void
     {
+        if (! $element->ruleset) {
+            return;
+        }
+
         $new = 0;
 
         if ($value instanceof EntryQuery) {
@@ -1559,9 +1570,13 @@ class Matrix extends Field implements EagerLoadingFieldInterface, ElementContain
                 $entry->setOwner($element);
 
                 if (! $entry->enabled) {
-                    $entry->ruleset->useScenario(ElementRules::SCENARIO_ESSENTIALS);
+                    if ($entry->ruleset) {
+                        $entry->ruleset->useScenario(ElementRules::SCENARIO_ESSENTIALS);
+                    }
                 } else {
-                    $entry->ruleset->useScenario($scenario);
+                    if ($entry->ruleset) {
+                        $entry->ruleset->useScenario($scenario);
+                    }
                 }
 
                 if (! $entry->validate()) {
@@ -1593,7 +1608,7 @@ class Matrix extends Field implements EagerLoadingFieldInterface, ElementContain
         }
 
         if (
-            $element->ruleset->inScenarios(ElementRules::SCENARIO_LIVE) &&
+            $element->ruleset && $element->ruleset->inScenarios(ElementRules::SCENARIO_LIVE) &&
             ($this->minEntries || $this->maxEntries)
         ) {
             $rules = array_filter([
@@ -1630,7 +1645,7 @@ class Matrix extends Field implements EagerLoadingFieldInterface, ElementContain
         return $this->entryManager()->getSearchKeywords($element);
     }
 
-    /** @return array{elementType:class-string<Entry>,map:list<array{source:int,target:int}>,criteria:array{fieldId:int|string|null,allowOwnerDrafts:true,allowOwnerRevisions:true,revisions:bool},createElement:callable} */
+    /** @return array{elementType:class-string<Entry>,map:array<int,array{source:int,target:int}>,criteria:array{fieldId:int|string|null,allowOwnerDrafts:true,allowOwnerRevisions:true,revisions:bool},createElement:callable} */
     public function getEagerLoadingMap(array $sourceElements): array
     {
         // Get the source element IDs
@@ -1654,7 +1669,10 @@ class Matrix extends Field implements EagerLoadingFieldInterface, ElementContain
                 ->where('entries.fieldId', $this->id))
             ->orderBy('elements_owners.sortOrder')
             ->get()
-            ->map(fn (object $row) => (array) $row)
+            ->map(fn (\stdClass $row) => [
+                'source' => (int) $row->source,
+                'target' => (int) $row->target,
+            ])
             ->all();
 
         return [
@@ -1723,7 +1741,7 @@ class Matrix extends Field implements EagerLoadingFieldInterface, ElementContain
             $arguments += Gql::getFieldLayoutArguments($entryType->getFieldLayout());
         }
 
-        $unionType = GqlHelper::getUnionType($typeName, $typeArray);
+        $unionType = GqlHelper::getUnionType($typeName, array_values($typeArray));
 
         return [
             'name' => $this->handle,
@@ -1902,7 +1920,7 @@ class Matrix extends Field implements EagerLoadingFieldInterface, ElementContain
             // Get the canonical entry UUIDs in case the data was posted with them
             $derivatives = Collection::make($oldEntriesById)
                 ->filter(fn (Entry $entry) => $entry->getIsDerivative())
-                ->keyBy(fn (Entry $entry) => $entry->getCanonicalId());
+                ->keyBy(fn (Entry $entry) => $entry->getCanonicalId() ?? throw new RuntimeException('Derivative entries must have a canonical ID.'));
 
             if ($derivatives->isNotEmpty()) {
                 $canonicalUids = DB::table(Table::ELEMENTS)
@@ -1987,7 +2005,7 @@ class Matrix extends Field implements EagerLoadingFieldInterface, ElementContain
                     )
                 ) {
                     // Duplicate it as a draft. (We'll drop its draft status from NestedElementManager::saveNestedElements().)
-                    $entry = app(Drafts::class)->createDraft($entry, craftAuth()->id(), null, null, [
+                    $entry = app(Drafts::class)->createDraft($entry, currentUser()?->getCraftUserId(), null, null, [
                         'canonicalId' => $entry->id,
                         'primaryOwnerId' => $element->id,
                         'owner' => $element,
@@ -2007,7 +2025,7 @@ class Matrix extends Field implements EagerLoadingFieldInterface, ElementContain
                     continue;
                 }
                 $entry = new Entry;
-                $entry->fieldId = $this->id;
+                $entry->fieldId = $this->getId();
                 $entry->typeId = $entryTypes[$entryData['type']]->id;
                 $entry->setPrimaryOwner($element);
                 $entry->setOwner($element);

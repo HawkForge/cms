@@ -65,10 +65,11 @@ class ElementActions
      */
     public function availableActions(string $elementType, string $sourceKey, ElementQueryInterface $elementQuery): array
     {
-        $actions = $elementType::actions($sourceKey);
+        $actions = [];
 
-        foreach ($actions as $index => $action) {
-            $actions[$index] = $this->createAction($action, $elementType);
+        foreach ($elementType::actions($sourceKey) as $action) {
+            $actions[] = $this->createAction($action, $elementType);
+            $index = array_key_last($actions);
 
             if ($elementQuery->trashed) {
                 if ($actions[$index] instanceof DeleteActionInterface && $actions[$index]->canHardDelete()) {

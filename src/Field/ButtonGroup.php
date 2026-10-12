@@ -119,7 +119,7 @@ class ButtonGroup extends BaseOptionsField implements SortableFieldInterface
         return ButtonGroupComponent::make()
             ->id($id)
             ->name($this->handle)
-            ->value($selectedValue !== null ? (string) $selectedValue : null)
+            ->value(is_array($selectedValue) ? ($selectedValue[0] ?? null) : $selectedValue)
             ->disabled($static)
             ->buttons($buttons)
             ->toHtml();

@@ -111,6 +111,7 @@ abstract class BaseElementAdapter implements ElementAdapter
             'duplicateModes' => $this->duplicateModes(),
             'notes' => $this->notes(),
         ], static fn (mixed $value): bool => $value !== null && $value !== []);
+
     }
 
     public function listQuery(CraftUser $actor): ElementQueryInterface
